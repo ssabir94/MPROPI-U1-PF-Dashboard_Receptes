@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titol }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    {# Preparar les etiquetes de presentació sense modificar les dades. #}
+    {% set mesos = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny',
+                    'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'] %}
+    {% set categoria = namespace(nom='Totes les categories') %}
+    {% for codi, nom in grups %}
+        {% if codi == grup_seleccionat %}
+            {% set categoria.nom = nom %}
+        {% endif %}
+    {% endfor %}
+
+    {# Aplicar el format català només a la presentació dels nombres.
+       Conservar els valors numèrics originals per als càlculs i l’ordenació. #}
+    {% macro nombre(valor, decimals=0) -%}
+        {%- if decimals == 2 -%}
+            {{- '{:,.2f}'.format(valor).replace(',', '|').replace('.', ',').replace('|', '.') -}}
+        {%- else -%}
+            {{- '{:,.0f}'.format(valor).replace(',', '.') -}}
+        {%- endif -%}
+    {%- endmacro %}
+
+    {% macro percentatge(valor) -%}
+        {%- if valor > 0 and valor * 100 < 1 -%}
+            &lt; 0,01 %
+        {%- else -%}
+            {{ nombre(valor, 2) }} %
+        {%- endif -%}
+    {%- endmacro %}
+
+    {% macro pagina_url(numero) -%}
+        {{- url_for('dashboard', mes=mes_seleccionat, grup=grup_seleccionat,
+                    edat=edat_seleccionada, sexe=sexe_seleccionat,
+                    ordre=ordre, sentit=sentit, mesura_mensual=mesura_mensual,
+                    pagina=numero, _anchor='registres') -}}
+    {%- endmacro %}
+
+    {# Reutilitzar el resum dels filtres, adaptant la dimensió comparada:
+       mostrar totes les categories a la seva comparativa i tot el 2024
+       a la mensual, sense canviar la selecció global de l’usuari. #}
+    {% macro seleccio_actual(ambit="seleccio") -%}
+        <p class="active-selection">
+            <strong>{{ 'Comparació anual:' if ambit == 'mesos' else ('Comparació de categories:' if ambit == 'categories' else 'Filtres aplicats:') }}</strong>
+            <span>{{ mesos[(mes_seleccionat|int) - 1] ~ ' de 2024' if mes_seleccionat and ambit != 'mesos' else 'Tot el 2024' }}</span>
+            <span aria-hidden="true">·</span><span>{{ 'Totes les categories' if ambit == 'categories' else categoria.nom }}</span>
+            <span aria-hidden="true">·</span><span>{{ edat_seleccionada or 'Totes les edats' }}</span>
+            <span aria-hidden="true">·</span><span>{{ sexe_seleccionat or 'Tots els sexes' }}</span>
+        </p>
+    {%- endmacro %}
+
+    <div class="page-shell">
+        <header class="page-header">
+            <p class="eyebrow">Barcelona Ciutat <span aria-hidden="true">/</span> 2024</p>
+            <h1>{{ titol }}</h1>
+            <p class="page-intro">Explora les receptes facturades al CatSalut segons l’edat, el sexe, la categoria i el mes.</p>
+            <div class="purpose-box">
+                <p class="eyebrow">L’objectiu</p>
+                <p><strong>Entendre com es reparteixen les receptes i el seu import.</strong> Comparar-ne el repartiment per edat i sexe, veure si les categories amb més receptes també concentren més import i observar els canvis mensuals del 2024.</p>
+            </div>
+            <nav class="section-nav" aria-label="Explorar les preguntes de l’anàlisi">
+                <a href="#comparacio-poblacio"><span>01</span> Edat i sexe</a>
+                <a href="#comparacio-grups"><span>02</span> Receptes i import</a>
+                <a href="#distribucio-mensual"><span>03</span> Al llarg de l’any</a>
+            </nav>
+        </header>
+
+        <main>
+            <section class="panel filters-panel" aria-labelledby="titol-filtres">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">La teva consulta</p>
+                        <h2 id="titol-filtres">Explorar les dades</h2>
+                    </div>
+                </div>
+                <p class="instruction" id="ajuda-filtres"><strong>Comença aquí.</strong> <em>Tria el mes, la categoria, l’edat o el sexe i prem «Aplicar filtres» per actualitzar els resultats.</em></p>
+
+                {# Conservar la mesura i l’ordenació amb camps ocults per no perdre
+                   aquestes opcions en filtrar. Ometre la pàgina per començar
+                   per la primera quan canviï la selecció. #}
+                <form action="{{ url_for('dashboard') }}" method="get" aria-describedby="ajuda-filtres">
+                    <input type="hidden" name="ordre" value="{{ ordre }}">
+                    <input type="hidden" name="sentit" value="{{ sentit }}">
+                    <input type="hidden" name="mesura_mensual" value="{{ mesura_mensual }}">
+
+                    <div class="filter-grid">
+                        <div class="field">
+                            <label for="mes">Mes</label>
+                            <select id="mes" name="mes">
+                                <option value="" {% if not mes_seleccionat %}selected{% endif %}>Tots els mesos</option>
+                                {% for nom_mes in mesos %}
+                                    <option value="{{ loop.index }}" {% if mes_seleccionat == loop.index|string %}selected{% endif %}>{{ nom_mes }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="field category-field">
+                            <label for="grup">Categoria de dispensació</label>
+                            <select id="grup" name="grup" aria-describedby="ajuda-atc">
+                                <option value="" {% if not grup_seleccionat %}selected{% endif %}>Totes les categories</option>
+                                {% for codi, nom in grups %}
+                                    <option value="{{ codi }}" {% if grup_seleccionat == codi %}selected{% endif %}>{{ codi }} · {{ nom }}</option>
+                                {% endfor %}
+                            </select>
+                            <small id="ajuda-atc">Grups generals de medicaments i altres productes. <a href="#notes-dades">Què signifiquen els codis?</a></small>
+                        </div>
+                        <div class="field">
+                            <label for="edat">Grup d’edat</label>
+                            <select id="edat" name="edat">
+                                <option value="" {% if not edat_seleccionada %}selected{% endif %}>Totes les edats</option>
+                                {% for edat in edats %}
+                                    <option value="{{ edat }}" {% if edat_seleccionada == edat %}selected{% endif %}>{{ edat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="sexe">Sexe</label>
+                            <select id="sexe" name="sexe">
+                                <option value="" {% if not sexe_seleccionat %}selected{% endif %}>Tots els sexes</option>
+                                {% for sexe in sexes %}
+                                    <option value="{{ sexe }}" {% if sexe_seleccionat == sexe %}selected{% endif %}>{{ sexe }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit">Aplicar filtres</button>
+                        <a class="reset-link" href="{{ url_for('dashboard') }}">Restablir filtres</a>
+                    </div>
+                </form>
+
+                <!-- Mostrar la selecció aplicada en una línia que es pugui ajustar a mòbil. -->
+                {{ seleccio_actual() }}
+                <p class="reading-note">Els totals, el perfil d’edat i sexe i els registres segueixen els quatre filtres. Per comparar, la gràfica de categories conserva les altres categories i la mensual conserva els altres mesos de l’any.</p>
+            </section>
+
+            <section class="summary-section" aria-labelledby="titol-resum">
+                <h2 id="titol-resum">La selecció en xifres</h2>
+                {% if not resum['total_registres'] %}
+                    <p class="instruction"><strong>No hi ha registres que coincideixin amb aquests filtres.</strong> Els zeros indiquen que no s’han trobat dades al fitxer. Les comparatives poden mostrar altres categories o mesos que sí que tenen registres.</p>
+                {% endif %}
+                <div class="metrics-grid">
+                    <article class="metric-card">
+                        <h3>Receptes facturades</h3>
+                        <p class="metric-value">{{ nombre(resum['total_receptes']) }}</p>
+                        <p class="metric-description">Nombre de receptes de la selecció.</p>
+                    </article>
+                    <article class="metric-card">
+                        <h3>Envasos facturats</h3>
+                        <p class="metric-value">{{ nombre(resum['total_envasos']) }}</p>
+                        <p class="metric-description">Nombre d’envasos facturats.</p>
+                    </article>
+                    <article class="metric-card">
+                        <h3>Import íntegre <span class="muted">· PVP</span></h3>
+                        <p class="metric-value">{{ nombre(resum['import_integre'], 2) }} <span>€</span></p>
+                        <p class="metric-description">Valor facturat a preu de venda al públic.</p>
+                    </article>
+                    <article class="metric-card">
+                        <h3>Aportació del CatSalut</h3>
+                        <p class="metric-value">{{ nombre(resum['aportacio_catsalut'], 2) }} <span>€</span></p>
+                        <p class="metric-description">Part de l’import assumida pel CatSalut.</p>
+                    </article>
+                </div>
+                <p class="reading-note">Una persona pot tenir diverses receptes. Aquestes dades no permeten calcular la dispensació per habitant.</p>
+            </section>
+
+            <section class="panel" id="comparacio-poblacio" aria-labelledby="titol-poblacio">
+                <p class="eyebrow">Edat i sexe</p>
+                {# Adaptar la pregunta als filtres per no prometre comparar edats
+                   o sexes quan només es representa un grup. #}
+                <h2 id="titol-poblacio">{% if edat_seleccionada and sexe_seleccionat %}Quantes receptes corresponen a aquesta edat i sexe?{% elif edat_seleccionada %}Com es reparteixen les receptes entre dones i homes?{% elif sexe_seleccionat %}Com es reparteixen les receptes per edat?{% else %}Com es reparteixen les receptes entre edats i sexes?{% endif %}</h2>
+                {{ seleccio_actual() }}
+                {% if resum['total_registres'] %}
+                    <p class="section-intro">{% if edat_seleccionada and sexe_seleccionat %}La barra mostra el total de receptes dels filtres aplicats.{% elif sexe_seleccionat %}Cada barra mostra les receptes d’una franja d’edat del sexe seleccionat.{% elif edat_seleccionada %}Les dues barres comparen dones i homes dins de la franja d’edat seleccionada.{% else %}Cada franja mostra el nombre de receptes de dones i homes.{% endif %}</p>
+                {% endif %}
+                {% if sexe_seleccionat and resum['total_registres'] %}
+                    <p class="reading-note">Només es mostren dades de {{ 'dones' if sexe_seleccionat == 'Dona' else 'homes' }}. Tria «Tots els sexes» per veure tots dos grups.</p>
+                {% endif %}
+                {% if resum['total_registres'] %}
+                <figure>
+                    <picture>
+                        {# Triar la imatge adaptada a l’amplada de pantalla, sense tornar a calcular dades a Jinja. #}
+                        <source media="(max-width: 600px)" srcset="{{ url_for('grafica_edat_sexe', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat, vista='mobil') }}">
+                        <img src="{{ url_for('grafica_edat_sexe', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat) }}"
+                         alt="Receptes per edat de {{ 'dones i homes' if not sexe_seleccionat else ('dones' if sexe_seleccionat == 'Dona' else 'homes') }} dins de la selecció.">
+                    </picture>
+                    <figcaption>
+                        {% if edat_seleccionada %}
+                            Edat seleccionada: <strong>{{ edat_seleccionada }}</strong>. Es mostra aquesta franja tal com consta al fitxer.
+                        {% else %}
+                            Per facilitar la lectura, les 24 franges del fitxer s’agrupen en cinc: 0–19, 20–39, 40–59, 60–79 i 80 anys o més. Els filtres i el detall dels registres mantenen les franges originals.
+                        {% endif %}
+                    </figcaption>
+                </figure>
+                <p class="reading-note">
+                    Una barra més llarga no permet afirmar que cada persona rebi més receptes.
+                    {% if not edat_seleccionada %}Les franges tenen poblacions i amplades diferents; l’última inclou totes les edats a partir de 80 anys.{% endif %}
+                </p>
+                {% else %}
+                    <p class="empty-state">No hi ha dades d’edat i sexe amb aquests filtres.</p>
+                {% endif %}
+            </section>
+
+            <section class="panel" id="comparacio-grups" aria-labelledby="titol-grups">
+                <p class="eyebrow">Volum i import</p>
+                <h2 id="titol-grups">Les categories amb més receptes també concentren més import?</h2>
+                <p class="section-intro">Compara quina part de les receptes i de l’import correspon a cada categoria.</p>
+                {{ seleccio_actual("categories") }}
+                <div class="chart-key" aria-label="Guia de lectura de la gràfica">
+                    <p class="key-item key-prescriptions"><strong>Blau · % de receptes</strong><span>Part del nombre total de receptes que correspon a cada categoria.</span></p>
+                    <p class="key-item key-amount"><strong>Verd petroli · % de l’import</strong><span>Part de l’import íntegre total que correspon a cada categoria.</span></p>
+                </div>
+                {# Identificar la categoria seleccionada sense amagar les altres.
+                   Explicar-ne l’absència si no té registres al període i població indicats. #}
+                {% if grup_seleccionat and resum['total_registres'] %}
+                    <p class="context-note"><strong>Categoria seleccionada: {{ grup_seleccionat }} · {{ categoria.nom }}.</strong> La fila destacada permet comparar-la amb les altres categories del mateix període, edat i sexe.</p>
+                {% elif grup_seleccionat %}
+                    <p class="context-note">No hi ha registres de <strong>{{ grup_seleccionat }} · {{ categoria.nom }}</strong> amb el mes, l’edat i el sexe aplicats. La gràfica i la taula mostren les altres categories que sí que tenen dades.</p>
+                {% endif %}
+                {% if comparacio_grups and resum_comparacio['total_receptes'] > 0 and resum_comparacio['import_integre'] > 0 %}
+                <figure class="category-chart">
+                    <div class="chart-scroll" role="region" aria-label="Gràfica de comparació de categories" tabindex="0">
+                    <picture>
+                        {# Triar la imatge adaptada a l’amplada de pantalla, sense tornar a calcular dades a Jinja. #}
+                        <source media="(max-width: 600px)" srcset="{{ url_for('grafica_grups', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat, vista='mobil') }}">
+                        <img src="{{ url_for('grafica_grups', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat) }}"
+                         alt="Percentatge de receptes i d’import íntegre per categoria ATC.">
+                    </picture>
+                    </div>
+                    <p class="chart-scroll-hint">En pantalles petites, desplaça la gràfica horitzontalment per llegir-la sencera.</p>
+                    <figcaption>Els percentatges es calculen sobre totes les categories del període, edat i sexe indicats a sobre. La gràfica les ordena de més a menys receptes.</figcaption>
+                </figure>
+
+                <aside class="interpretation-note">
+                    <strong>Com llegir la comparació</strong>
+                    <p>Compara les dues barres d’una mateixa categoria. Si la verda és més llarga, la categoria representa un percentatge més gran de l’import que del nombre de receptes.</p>
+                </aside>
+                {% else %}
+                    <p class="empty-state">{{ 'No es poden calcular tots dos percentatges perquè el total de receptes o d’import és zero. Pots consultar les quantitats a la taula.' if comparacio_grups else 'No hi ha registres de cap categoria per al mes, l’edat i el sexe indicats.' }}</p>
+                {% endif %}
+                {# Mantenir els valors exactes i l’ordenació disponibles sense ocupar
+                   tota la lectura inicial. Tornar a obrir el desplegable després d’ordenar. #}
+                <details class="data-disclosure" {% if request.args.get('taula') == '1' %}open{% endif %}>
+                    <summary>Consultar i ordenar les xifres per categoria</summary>
+                    {{ seleccio_actual("categories") }}
+                    <p class="disclosure-intro">Consulta les quantitats i els euros que resumeix la gràfica. La taula inclou totes les categories amb dades del mateix període, edat i sexe. Ordena-la per trobar les que tenen més receptes, més import o un import mitjà més alt.</p>
+                <!-- Situar l'ordenació al costat de la taula que modifica. -->
+                <div class="table-controls">
+                    <h3>Ordenar les categories</h3>
+                    <p id="ajuda-ordre" class="control-help">Ordenar només canvia la posició de les files d’aquesta taula. Per al nom s’aplica l’ordre alfabètic; per a les xifres, l’ordre numèric.</p>
+                    <form action="{{ url_for('dashboard', _anchor='comparacio-grups') }}" method="get" aria-describedby="ajuda-ordre">
+                        <input type="hidden" name="taula" value="1">
+                        <input type="hidden" name="mes" value="{{ mes_seleccionat }}">
+                        <input type="hidden" name="grup" value="{{ grup_seleccionat }}">
+                        <input type="hidden" name="edat" value="{{ edat_seleccionada }}">
+                        <input type="hidden" name="sexe" value="{{ sexe_seleccionat }}">
+                        <input type="hidden" name="mesura_mensual" value="{{ mesura_mensual }}">
+                        <input type="hidden" name="pagina" value="{{ paginacio['pagina'] }}">
+                        <div class="inline-controls">
+                            <div class="field">
+                                <label for="ordre">Ordenar aquesta taula per</label>
+                                <select id="ordre" name="ordre">
+                                    <option value="receptes" {% if ordre == 'receptes' %}selected{% endif %}>Nombre de receptes</option>
+                                    <option value="import_integre" {% if ordre == 'import_integre' %}selected{% endif %}>Import íntegre</option>
+                                    <option value="import_mitja_recepta" {% if ordre == 'import_mitja_recepta' %}selected{% endif %}>Import mitjà per recepta</option>
+                                    <option value="nom" {% if ordre == 'nom' %}selected{% endif %}>Nom de la categoria</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="sentit">Sentit</label>
+                                <select id="sentit" name="sentit">
+                                    <option value="desc" {% if sentit == 'desc' %}selected{% endif %}>De més a menys / Z–A</option>
+                                    <option value="asc" {% if sentit == 'asc' %}selected{% endif %}>De menys a més / A–Z</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="secondary-button">Ordenar taula</button>
+                        </div>
+                    </form>
+                </div>
+                <p class="table-scroll-hint" id="ajuda-taula-categories">↔ Desplaça lateralment la taula per veure totes les columnes.</p>
+                <div class="table-scroll" role="region" aria-label="Taula comparativa de categories" aria-describedby="ajuda-taula-categories" tabindex="0">
+                    <table>
+                        <thead><tr>
+                            <th scope="col">Codi</th><th scope="col">Categoria general</th>
+                            <th scope="col" class="numeric">Receptes</th><th scope="col" class="numeric">% receptes</th>
+                            <th scope="col" class="numeric">Import íntegre</th><th scope="col" class="numeric">% import</th>
+                            <th scope="col" class="numeric">Import mitjà per recepta</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for grup in comparacio_grups %}
+                                <tr{% if grup['codi'] == grup_seleccionat %} class="selected-category"{% endif %}>
+                                    <td class="code-cell">{{ grup['codi'] }}{% if grup['codi'] == grup_seleccionat %}<span class="selection-badge">Seleccionada</span>{% endif %}</td><td>{{ grup['nom'] }}</td>
+                                    <td class="numeric">{{ nombre(grup['receptes']) }}</td>
+                                    <td class="numeric">{{ percentatge(grup['percentatge_receptes']) if resum_comparacio['total_receptes'] > 0 else 'No calculable' }}</td>
+                                    <td class="numeric">{{ nombre(grup['import_integre'], 2) }} €</td>
+                                    <td class="numeric">{{ percentatge(grup['percentatge_import']) if resum_comparacio['import_integre'] > 0 else 'No calculable' }}</td>
+                                    <td class="numeric">{{ nombre(grup['import_mitja_recepta'], 2) ~ ' €' if grup['import_mitja_recepta'] is not none else 'No calculable' }}</td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="7" class="empty-state">No hi ha categories amb dades per al període, edat i sexe indicats.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="reading-note">Import mitjà per recepta = import íntegre de la categoria ÷ nombre de receptes. No indica el preu d’un producte concret. Els noms de la taula es conserven tal com apareixen al fitxer.</p>
+                </details>
+            </section>
+
+            <section class="panel" id="distribucio-mensual" aria-labelledby="titol-mesos">
+                <p class="eyebrow">Al llarg de l’any</p>
+                <h2 id="titol-mesos">Com canvien les receptes i l’import durant l’any?</h2>
+                <p class="section-intro">Compara els mesos del 2024 mantenint la categoria, l’edat i el sexe que has triat. Pots veure el nombre de receptes o l’import íntegre.</p>
+                {{ seleccio_actual("mesos") }}
+                <form action="{{ url_for('dashboard', _anchor='distribucio-mensual') }}" method="get">
+                    <input type="hidden" name="mes" value="{{ mes_seleccionat }}">
+                    <input type="hidden" name="grup" value="{{ grup_seleccionat }}">
+                    <input type="hidden" name="edat" value="{{ edat_seleccionada }}">
+                    <input type="hidden" name="sexe" value="{{ sexe_seleccionat }}">
+                    <input type="hidden" name="ordre" value="{{ ordre }}">
+                    <input type="hidden" name="sentit" value="{{ sentit }}">
+                    <input type="hidden" name="pagina" value="{{ paginacio['pagina'] }}">
+                    <div class="inline-controls">
+                        <div class="field">
+                            <label for="mesura_mensual">Quina mesura vols veure?</label>
+                            <select id="mesura_mensual" name="mesura_mensual">
+                                <option value="receptes" {% if mesura_mensual == 'receptes' %}selected{% endif %}>Nombre de receptes</option>
+                                <option value="import_integre" {% if mesura_mensual == 'import_integre' %}selected{% endif %}>Import íntegre en euros</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="secondary-button">Actualitzar gràfica</button>
+                    </div>
+                </form>
+                {% if mes_seleccionat %}
+                    <p class="context-note"><strong>Mes seleccionat: {{ mesos[(mes_seleccionat|int) - 1] }}.</strong> Es destaca dins de l’any per comparar-lo amb els altres mesos. Els totals i els registres continuen corresponent al mes que has triat.</p>
+                {% endif %}
+                {# Mostrar els extrems calculats al backend sobre la comparació anual:
+                   evitar conclusions fixes que deixarien de ser certes en canviar filtres. #}
+                {% if destacats_mensuals %}
+                    <figure class="monthly-chart">
+                        <div class="chart-scroll" role="region" aria-label="Gràfica de comparació dels dotze mesos" tabindex="0">
+                        <picture>
+                            {# Triar la imatge adaptada a l’amplada de pantalla, sense tornar a calcular dades a Jinja. #}
+                            <source media="(max-width: 600px)" srcset="{{ url_for('grafica_mensual', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat, mesura_mensual=mesura_mensual, vista='mobil') }}">
+                            <img src="{{ url_for('grafica_mensual', mes=mes_seleccionat, grup=grup_seleccionat, edat=edat_seleccionada, sexe=sexe_seleccionat, mesura_mensual=mesura_mensual) }}"
+                                alt="Comparació anual de {{ 'receptes facturades' if mesura_mensual == 'receptes' else 'l’import íntegre' }} per mesos, mantenint categoria, edat i sexe.">
+                        </picture>
+                        </div>
+                        <figcaption>Cada barra mostra el total d’un mes per als filtres de categoria, edat i sexe indicats a sobre.{% if mes_seleccionat %} La franja de fons i el nom en negreta identifiquen el mes seleccionat.{% endif %}{% if destacats_mensuals['mesos_amb_registres'] < 12 %} «Sense registres» vol dir que el fitxer no conté dades d’aquell mes per a aquests filtres.{% endif %}</figcaption>
+                    </figure>
+                    {% if destacats_mensuals['mesos_amb_registres'] > 1 and destacats_mensuals['maxim'] != destacats_mensuals['minim'] %}
+                        <div class="monthly-insights">
+                            <article>
+                                <h3>{{ 'Mes' if destacats_mensuals['mesos_maxim']|length == 1 else 'Mesos' }} amb més {{ 'import' if mesura_mensual == 'import_integre' else 'receptes' }}</h3>
+                                <p class="insight-month">{% for mes in destacats_mensuals['mesos_maxim'] %}{{ mesos[mes - 1] }}{{ ', ' if not loop.last }}{% endfor %}</p>
+                                <p class="insight-value">{{ nombre(destacats_mensuals['maxim'], 2) ~ ' €' if mesura_mensual == 'import_integre' else nombre(destacats_mensuals['maxim']) ~ ' receptes' }}</p>
+                            </article>
+                            <article>
+                                <h3>{{ 'Mes' if destacats_mensuals['mesos_minim']|length == 1 else 'Mesos' }} amb menys {{ 'import' if mesura_mensual == 'import_integre' else 'receptes' }}</h3>
+                                <p class="insight-month">{% for mes in destacats_mensuals['mesos_minim'] %}{{ mesos[mes - 1] }}{{ ', ' if not loop.last }}{% endfor %}</p>
+                                <p class="insight-value">{{ nombre(destacats_mensuals['minim'], 2) ~ ' €' if mesura_mensual == 'import_integre' else nombre(destacats_mensuals['minim']) ~ ' receptes' }}</p>
+                            </article>
+                        </div>
+                    {% elif destacats_mensuals['mesos_amb_registres'] == 1 %}
+                        <p class="reading-note">Només hi ha dades d’un mes per a aquests filtres; no es pot comparar amb la resta de l’any.</p>
+                    {% else %}
+                        <p class="reading-note">Tots els mesos amb dades tenen el mateix total per a la mesura escollida.</p>
+                    {% endif %}
+                    <p class="reading-note"><strong>Tingues en compte:</strong> els mesos tenen un nombre de dies diferent i es comparen totals, no mitjanes diàries. Les dades d’un sol any no permeten afirmar que el mateix patró es repeteixi cada any.</p>
+                {% else %}
+                    <p class="empty-state">No hi ha dades en cap mes del 2024 per a la categoria, edat i sexe seleccionats.</p>
+                {% endif %}
+            </section>
+
+            <section class="panel" id="registres" aria-labelledby="titol-registres">
+                <p class="eyebrow">Consulta de les dades</p>
+                <h2 id="titol-registres">Registres de la selecció</h2>
+                {% if paginacio['total_registres'] %}
+                    <p class="section-intro">Registres {{ nombre(paginacio['primer']) }}–{{ nombre(paginacio['ultim']) }} de {{ nombre(paginacio['total_registres']) }}.</p>
+                {% else %}
+                    <p class="section-intro">Cap registre coincideix amb els filtres aplicats.</p>
+                {% endif %}
+                <p class="section-intro">Cada fila recull les receptes d’un mes, una franja d’edat, un sexe i un subgrup terapèutic. Amb «Tots els mesos» pots consultar les files de tot l’any; cada fila continua corresponent al seu mes.</p>
+                <p class="control-help">Es mostren fins a 25 files per pàgina, en l’ordre original del fitxer. Fes servir els filtres per trobar les dades que busques. Els totals de dalt sumen totes les files seleccionades, no només les d’aquesta pàgina.</p>
+                <p class="table-scroll-hint" id="ajuda-taula-registres">↔ Desplaça lateralment la taula per veure totes les columnes i el botó de detall.</p>
+                <div class="table-scroll" role="region" aria-label="Registres paginats de la selecció" aria-describedby="ajuda-taula-registres" tabindex="0">
+                    <table>
+                        <thead><tr>
+                            <th scope="col">Mes</th><th scope="col">Grup d’edat</th><th scope="col">Sexe</th>
+                            <th scope="col">Subgrup terapèutic · ATC 4</th><th scope="col" class="numeric">Receptes</th><th scope="col">Detall</th>
+                        </tr></thead>
+                        <tbody>
+                            {% for registre in paginacio['registres'] %}
+                                <tr>
+                                    <td>{{ mesos[registre['mes'] - 1] }}</td><td>{{ registre["grup d'edat"] }}</td><td>{{ registre['sexe'] }}</td>
+                                    <td>{{ registre['grup ATC nivell 4'] }}</td><td class="numeric">{{ nombre(registre['nombre de receptes']) }}</td>
+                                    <td><button type="button" class="detail-toggle" data-record-toggle
+                                                aria-expanded="false" aria-controls="detall-{{ loop.index }}">
+                                        <span aria-hidden="true">▸</span> <span class="detail-toggle-label">Veure detall</span>
+                                    </button></td>
+                                </tr>
+                                {# Reservar una fila completa per al detall per evitar
+                                   comprimir els camps en una cel·la estreta. #}
+                                <tr id="detall-{{ loop.index }}" class="record-detail-row" hidden>
+                                    <td colspan="6">
+                                        <div class="record-detail-grid">
+                                            <section aria-labelledby="context-{{ loop.index }}">
+                                                <h3 id="context-{{ loop.index }}">Detall d’aquest registre</h3>
+                                                <dl class="detail-fields">
+                                                    <div><dt>Mes del registre</dt><dd>{{ mesos[registre['mes'] - 1] }}</dd></div>
+                                                    <div><dt>Grup d’edat</dt><dd>{{ registre["grup d'edat"] }}</dd></div>
+                                                    <div><dt>Sexe</dt><dd>{{ registre['sexe'] }}</dd></div>
+                                                </dl>
+                                            </section>
+                                            <section aria-labelledby="classificacio-{{ loop.index }}">
+                                                <h3 id="classificacio-{{ loop.index }}">Classificació terapèutica</h3>
+                                                <p class="detail-help">Del grup general al subgrup més específic.</p>
+                                                <dl class="detail-fields">
+                                                    {% for nivell in [1, 2, 3, 4] %}
+                                                        <div>
+                                                            <dt>ATC · Nivell {{ nivell }}</dt>
+                                                            <dd><strong>{{ registre['codi del grup ATC nivell ' ~ nivell] }}</strong> · {{ registre['grup ATC nivell ' ~ nivell] or 'Sense especificar' }}</dd>
+                                                        </div>
+                                                    {% endfor %}
+                                                </dl>
+                                            </section>
+                                            <section aria-labelledby="imports-{{ loop.index }}">
+                                                <h3 id="imports-{{ loop.index }}">Quantitats i imports</h3>
+                                                <dl class="detail-fields detail-amounts">
+                                                    <div><dt>Receptes facturades</dt><dd>{{ nombre(registre['nombre de receptes']) }}</dd></div>
+                                                    <div><dt>Envasos facturats</dt><dd>{{ nombre(registre["nombre d'envasos"]) }}</dd></div>
+                                                    <div><dt>Import íntegre · PVP</dt><dd>{{ nombre(registre['import íntegre'], 2) }} €</dd></div>
+                                                    <div><dt>Aportació del CatSalut</dt><dd>{{ nombre(registre['import aportació CatSalut'], 2) }} €</dd></div>
+                                                </dl>
+                                            </section>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr><td colspan="6" class="empty-state">No hi ha registres per a aquesta selecció.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if paginacio['total_registres'] %}
+                <nav class="pagination" aria-label="Paginació dels registres">
+                    {% if paginacio['pagina'] > 1 %}<a class="page-link" href="{{ pagina_url(paginacio['pagina'] - 1) }}">← Anterior</a>{% endif %}
+                    <span>Pàgina {{ nombre(paginacio['pagina']) }} de {{ nombre(paginacio['total_pagines']) }}</span>
+                    {% if paginacio['pagina'] < paginacio['total_pagines'] %}<a class="page-link" href="{{ pagina_url(paginacio['pagina'] + 1) }}">Següent →</a>{% endif %}
+                </nav>
+                <p class="reading-note">Passar de pàgina conserva els filtres i els totals.</p>
+                {% endif %}
+            </section>
+        </main>
+
+        <footer class="page-footer" aria-labelledby="titol-font">
+            <div>
+                <h2 id="titol-font">Sobre les dades</h2>
+                <p>Font oficial: <a href="https://analisi.transparenciacatalunya.cat/d/thrd-jj3r" target="_blank" rel="noopener noreferrer">Receptes facturades al Servei Català de la Salut ↗</a></p>
+                <p>Dades obertes de Catalunya · Regió sanitària Barcelona Ciutat · Any 2024.</p>
+            </div>
+            <p class="footer-context">Dades de receptes dispensades en oficines de farmàcia i facturades al CatSalut.</p>
+            <details class="source-notes" id="notes-dades">
+                <summary>Com interpretar els codis i els imports</summary>
+                <p>La classificació ATC organitza els medicaments en grups. El nivell 1 és general i el nivell 4 és més específic: descriu un subgrup, no el nom d’un medicament concret.</p>
+                <p>SES, F i O comparteixen la descripció «Sense especificar», però són codis diferents i es mantenen separats. Segons la font oficial, SES correspon a productes sanitaris o dietoterapèutics. No es disposa d’una explicació dels codis F i O en la documentació consultada.</p>
+                {% if incidencies_import %}
+                    <p><strong>Qualitat de les dades del fitxer complet:</strong> {{ nombre(incidencies_import) }} registres tenen una aportació del CatSalut superior a l’import íntegre informat. Es mantenen els valors originals; se’n desconeix la causa.</p>
+                {% endif %}
+            </details>
+        </footer>
+    </div>
+<script>
+    // Obrir només el detall del registre indicat per aria-controls.
+    // Actualitzar aria-expanded per comunicar també l’estat a les eines d’accessibilitat.
+    // Gestionar la visibilitat al navegador sense tornar a consultar el CSV.
+    document.querySelectorAll('[data-record-toggle]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const detail = document.getElementById(button.getAttribute('aria-controls'));
+            const expanded = button.getAttribute('aria-expanded') === 'true';
+            detail.hidden = expanded;
+            button.setAttribute('aria-expanded', String(!expanded));
+            button.querySelector('[aria-hidden]').textContent = expanded ? '▸' : '▾';
+            button.querySelector('.detail-toggle-label').textContent = expanded ? 'Veure detall' : 'Amagar detall';
+        });
+    });
+</script>
+</body>
+</html>

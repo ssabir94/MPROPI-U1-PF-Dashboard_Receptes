@@ -1,0 +1,7 @@
+# Excloure l'entorn virtual i la memòria cau de Python.
+.venv/
+__pycache__/
+*.pyc
+
+# Excloure els ZIP preparats per al hosting.
+*.zip

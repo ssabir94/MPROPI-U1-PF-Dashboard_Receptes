@@ -1,0 +1,199 @@
+/* Centralitzar la paleta per mantenir coherents els controls, els avisos i les targetes. */
+:root {
+    --background: #f3f6f8;
+    --surface: #ffffff;
+    --text: #172c3c;
+    --muted: #526775;
+    --border: #dce5eb;
+    --accent: #106d69;
+    --accent-dark: #0c5350;
+    --soft: #edf6f4;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+}
+a { color: var(--accent-dark); text-underline-offset: 3px; }
+a:hover { color: var(--accent); }
+button, select { font: inherit; }
+button, select, summary, a { -webkit-tap-highlight-color: transparent; }
+/* Conservar un indicador visible de focus per poder navegar amb el teclat. */
+:focus-visible { outline: 3px solid #8c63d8; outline-offset: 3px; }
+.page-shell { width: min(1280px, calc(100% - 64px)); margin: 0 auto; }
+.page-header { padding: 48px 0 28px; }
+.eyebrow {
+    margin: 0 0 7px;
+    color: var(--accent);
+    font-size: .9rem;
+    font-weight: 750;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+.eyebrow span { padding: 0 9px; color: #80919c; }
+h1, h2, h3 { line-height: 1.2; }
+h1 { margin: 0 0 14px; max-width: none; font-size: clamp(2rem, 3.4vw, 3rem); letter-spacing: -.04em; }
+h2 { margin: 0 0 13px; font-size: clamp(1.5rem, 2.3vw, 1.9rem); letter-spacing: -.025em; }
+h3 { margin: 0 0 10px; font-size: 1.05rem; }
+p { margin: 0 0 14px; }
+/* Aprofitar l’amplada disponible sense forçar una sola línia en pantalles petites. */
+.page-intro { max-width: none; margin-bottom: 0; color: var(--muted); font-size: 1.03rem; }
+main { display: grid; gap: 28px; }
+.panel { min-width: 0; padding: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+.section-intro { max-width: none; color: var(--muted); }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label { font-size: 1rem; font-weight: 650; }
+.field small { color: var(--muted); font-size: .9rem; }
+.filter-grid { display: grid; grid-template-columns: minmax(140px, .85fr) minmax(240px, 2.2fr) minmax(140px, 1fr) minmax(130px, .85fr); gap: 18px; margin-top: 22px; align-items: start; }
+select { width: 100%; min-height: 44px; padding: 9px 30px 9px 11px; border: 1px solid #bdcdd6; border-radius: 8px; background: white; color: var(--text); font-size: .98rem; }
+button { min-height: 44px; padding: 10px 19px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: white; font-size: .98rem; font-weight: 650; cursor: pointer; }
+button:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; margin: 22px 0; }
+.reset-link { font-size: .98rem; font-weight: 600; }
+.active-selection { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 9px; margin: 0; padding: 12px 15px; border: 1px solid var(--border); border-radius: 9px; background: #f5f8fa; color: #344d5e; font-size: .95rem; }
+.active-selection strong { color: var(--text); }
+/* Destacar els indicadors sense barrejar-los amb els controls. */
+.summary-section { min-width: 0; }
+.summary-section > h2 { margin-bottom: 16px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.metric-card { min-width: 0; padding: 22px 18px; border: 1px solid var(--border); border-radius: 13px; background: var(--surface); }
+.metric-card h3 { margin-bottom: 15px; font-size: .95rem; font-weight: 650; }
+.metric-value { margin: 0 0 10px; color: #104a48; font-size: clamp(1.05rem, 1.85vw, 1.55rem); font-weight: 750; line-height: 1.2; letter-spacing: -.035em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.metric-value span { font-size: .78em; }
+.metric-description { margin: 0; font-size: .95rem; color: var(--muted); }
+.muted { color: var(--muted); }
+.reading-note { margin: 16px 0 0; color: var(--muted); font-size: 1rem; }
+figure { margin: 22px 0 0; }
+picture { display: block; }
+figure img { display: block; width: 100%; max-width: 1000px; height: auto; margin: 0 auto; }
+figcaption { margin: 12px 0 0; color: var(--muted); font-size: .95rem; }
+/* Situar l'ordenació just abans de la taula corresponent. */
+.table-controls { margin-top: 18px; padding: 18px 0; border-top: 1px solid var(--border); }
+.control-help { max-width: 880px; color: var(--muted); font-size: .95rem; }
+.inline-controls { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin-top: 15px; }
+.inline-controls .field { flex: 0 1 280px; }
+.secondary-button { background: var(--soft); color: var(--accent-dark); border-color: #bfdad5; }
+.secondary-button:hover { color: white; }
+/* Permetre consultar taules amples sense desbordar la pàgina. */
+.table-scroll { width: 100%; overflow-x: auto; margin-top: 18px; border: 1px solid var(--border); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+th, td { padding: 13px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+th { background: #eef3f6; color: #344d5e; font-size: .9rem; font-weight: 700; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:nth-child(even) { background: #f9fbfc; }
+tbody tr:hover { background: #eff7f6; }
+/* Alinear les quantitats i mantenir-les juntes per facilitar la comparació de columnes. */
+.numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.code-cell { font-weight: 700; }
+.empty-state { padding: 28px; color: var(--muted); text-align: center; }
+/* Desplegar el detall en una fila completa, fora de la cel·la del botó. */
+summary { cursor: pointer; color: var(--accent-dark); font-weight: 650; }
+.detail-toggle { min-height: 36px; padding: 5px 8px; border-color: transparent; background: transparent; color: var(--accent-dark); font-size: .95rem; white-space: nowrap; }
+.detail-toggle:hover { background: var(--soft); border-color: #bfdad5; }
+.record-detail-row[hidden] { display: none; }
+.record-detail-row > td { padding: 22px; background: #f0f7f6; border-bottom: 1px solid var(--border); }
+.record-detail-grid { display: grid; grid-template-columns: minmax(140px, .75fr) minmax(260px, 2fr) minmax(190px, 1fr); gap: 28px; }
+.record-detail-grid section { min-width: 0; }
+.record-detail-grid h3 { margin: 0 0 12px; font-size: .9rem; }
+.detail-help { margin: 0 0 12px; color: var(--muted); font-size: .9rem; }
+.detail-fields { margin: 0; display: grid; gap: 12px; }
+.detail-fields div { min-width: 0; }
+.detail-fields dt { margin: 0 0 3px; color: var(--muted); font-size: .9rem; }
+.detail-fields dd { margin: 0; overflow-wrap: anywhere; font-size: .95rem; }
+.detail-amounts dd { font-weight: 650; font-variant-numeric: tabular-nums; }
+.pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-top: 20px; font-size: .95rem; }
+.page-link { padding: 7px 12px; border: 1px solid var(--border); border-radius: 7px; text-decoration: none; background: white; }
+.page-link:hover { background: var(--soft); }
+.page-footer { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; margin-top: 30px; padding: 25px 0 40px; border-top: 2px solid #cbdedb; color: var(--muted); font-size: .95rem; }
+.page-footer p { margin-bottom: 6px; }
+section[id] { scroll-margin-top: 20px; }
+/* Guiar la lectura amb una finalitat visible i ajudes diferenciades. */
+.purpose-box { margin-top: 24px; padding: 20px 24px; background: #e7f2ef; border-left: 4px solid var(--accent); border-radius: 0 12px 12px 0; }
+.purpose-box p:last-child { margin: 0; max-width: 1050px; }
+.purpose-box strong { color: #104a48; }
+.section-nav { display: flex; flex-wrap: wrap; gap: 12px 26px; margin-top: 22px; }
+.section-nav a { display: inline-flex; gap: 9px; align-items: center; font-size: .98rem; font-weight: 650; text-decoration: none; }
+.section-nav a:hover { text-decoration: underline; }
+.section-nav span { font-size: .9rem; background: #dcece8; border-radius: 6px; padding: 3px 7px; }
+.instruction { padding: 14px 18px; margin: 18px 0; background: #edf6f4; border-left: 3px solid #106d69; border-radius: 0 8px 8px 0; color: #244c49; }
+.instruction strong { margin-right: 5px; }
+.panel > .active-selection { margin: 20px 0; }
+.chart-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 22px 0; }
+.key-item { margin: 0; border: 1px solid var(--border); border-left: 4px solid; padding: 14px 18px; border-radius: 10px; background: #f9fbfc; }
+.key-item strong { display: block; margin-bottom: 6px; }
+.key-item span { color: var(--muted); font-size: .98rem; }
+.key-prescriptions { border-left-color: #3F72A6; }
+.key-prescriptions strong { color: #2F5780; }
+.key-amount { border-left-color: #287D78; }
+.key-amount strong { color: #1E605C; }
+.interpretation-note { margin: 24px 0; padding: 18px 22px; background: #fff8e9; border-left: 4px solid #b88628; border-radius: 0 10px 10px 0; }
+.interpretation-note > strong { display: block; margin-bottom: 6px; color: #6e501b; }
+.interpretation-note p { margin: 0; }
+.data-disclosure { margin-top: 26px; border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.data-disclosure > summary { font-size: 1.1rem; }
+.data-disclosure > .active-selection { margin-top: 18px; }
+.disclosure-intro { margin: 18px 0 0; color: var(--muted); }
+.page-footer h2 { font-size: 1.2rem; margin-bottom: 12px; color: var(--text); }
+.footer-context { margin: 0; align-self: center; }
+/* Conservar la mida dels noms en escriptori i tauleta; utilitzar un PNG compacte en mòbil. */
+/* Permetre el desplaçament de la gràfica ampla només quan no s’aplica la vista mòbil. */
+.chart-scroll { overflow-x: auto; max-width: 100%; }
+.category-chart img { min-width: 960px; max-width: none; }
+.chart-scroll-hint { display: none; }
+.table-scroll-hint { display: none; font-size: .95rem; color: var(--accent-dark); margin: 18px 0 0; }
+/* Distingir l'àmbit comparatiu i els resultats observats. */
+.context-note { padding: 14px 18px; margin: 18px 0; background: #edf6f4; border-left: 3px solid #106d69; border-radius: 0 8px 8px 0; }
+.selected-category, tbody tr.selected-category:nth-child(even) { background: #e5f2ef; }
+.selected-category td:first-child { border-left: 3px solid var(--accent); }
+.selection-badge { display: block; font-size: .9rem; font-weight: 500; color: var(--accent-dark); margin-top: 3px; }
+.monthly-chart img { min-width: 760px; max-width: none; }
+.monthly-insights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.monthly-insights article { border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; background: #f7faf9; }
+.monthly-insights h3 { color: var(--muted); font-size: 1rem; }
+.insight-month { font-size: 1.2rem; font-weight: 650; margin-bottom: 8px; }
+.insight-value { color: #104a48; font-size: clamp(1.15rem, 2vw, 1.6rem); font-weight: 750; margin: 0; overflow-wrap: anywhere; }
+.source-notes { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 15px; }
+.source-notes p { margin-top: 14px; max-width: 1000px; }
+/* Reorganitzar els controls i les targetes segons l'espai disponible. */
+@media (max-width: 1050px) {
+    .chart-scroll-hint { display: block; font-size: .9rem; color: var(--muted); margin: 10px 0; }
+    .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .record-detail-grid { grid-template-columns: 1fr 2fr; gap: 22px; }
+    .record-detail-grid section:last-child { grid-column: 1 / -1; }
+    .detail-amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .metric-value { font-size: 1.55rem; }
+}
+@media (max-width: 600px) {
+    /* Utilitzar els PNG compactes de picture sense l’amplada mínima d’escriptori. */
+    .category-chart img, .monthly-chart img, figure img { min-width: 0; max-width: 100%; width: 100%; }
+    .chart-scroll { overflow-x: visible; }
+    .chart-scroll-hint { display: none; }
+    /* Conservar les taules amples i explicitar que es poden desplaçar. */
+    .table-scroll-hint { display: block; }
+    .table-scroll table { min-width: 720px; }
+    #registres th:nth-child(-n+3),
+    #registres tbody tr:not(.record-detail-row) td:nth-child(-n+3) { white-space: nowrap; }
+    .page-shell { width: calc(100% - 28px); }
+    .page-header { padding: 28px 0 22px; }
+    main { gap: 20px; }
+    .panel { padding: 20px 16px; border-radius: 12px; }
+    .filter-grid { grid-template-columns: 1fr; gap: 16px; }
+    .chart-key, .monthly-insights, .page-footer { grid-template-columns: 1fr; }
+    .purpose-box { padding: 18px; }
+    .data-disclosure { padding: 15px 12px; }
+    .record-detail-grid { grid-template-columns: 1fr; }
+    .record-detail-row > td { padding: 18px 14px; }
+    .metrics-grid { grid-template-columns: 1fr; gap: 10px; }
+    .metric-card { padding: 18px; }
+    .metric-card h3 { margin-bottom: 10px; }
+    .metric-value { font-size: 1.65rem; }
+    .inline-controls .field { flex: 1 1 100%; }
+    .inline-controls button { width: 100%; }
+    .active-selection { font-size: .95rem; }
+    .table-controls { margin-top: 20px; }
+}
